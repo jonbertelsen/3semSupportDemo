@@ -3,9 +3,13 @@ package dat.supportweb.servlets;
 
 import dat.supportweb.entities.Student;
 import dat.supportweb.entities.Ticket;
+import dat.supportweb.exceptions.DatabaseException;
+import dat.supportweb.persistence.WaitingListMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -21,21 +25,24 @@ public class Waitinglist extends HttpServlet {
     public void init() throws ServletException
     {
         ticketList = new ArrayList<>();
-        studentList = new ArrayList<>();
-        studentList.add(new Student("Blondie"));
-        studentList.add(new Student("BJønke"));
-        studentList.add(new Student("Makrel"));
-        studentList.add(new Student("Ludvig"));
     }
     
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         
+        try 
+        {
+            ticketList = WaitingListMapper.getAllTickets();
+        } 
+        catch (DatabaseException ex) 
+        {
+            Logger.getLogger(Waitinglist.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
         request.setAttribute("ticketList", ticketList);
         
-        request.getRequestDispatcher("/waitinglist.jsp").forward(request, response);
-        
+        request.getRequestDispatcher("/waitinglist.jsp").forward(request, response);    
     }
 
     @Override
@@ -47,16 +54,37 @@ public class Waitinglist extends HttpServlet {
             switch (command){
                 case "add":
                     String name = request.getParameter("requestname");
-                    ticketList.add(new Ticket(new Student(name)));
-                    break;
-                case "remove":
-                    if (ticketList.size() > 0)
+                    Ticket ticket = new Ticket(new Student(name));
+                    try 
                     {
-                        ticketList.remove(0);
+                        WaitingListMapper.createTicket(ticket);
+                    }
+                    catch (DatabaseException ex) 
+                    {
+                        Logger.getLogger(Waitinglist.class.getName()).log(Level.SEVERE, null, ex);
                     }
                     break;
-            
+                case "remove":     
+                    try 
+                    {
+                        WaitingListMapper.removeFirstTicket();
+                    } 
+                    catch (DatabaseException ex) 
+                    {
+                        Logger.getLogger(Waitinglist.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    break;
             }
+            
+        try 
+        {
+            ticketList = WaitingListMapper.getAllTickets();
+        } 
+        catch (DatabaseException ex) 
+        {
+            Logger.getLogger(Waitinglist.class.getName()).log(Level.SEVERE, null, ex);
+        }
+            
             request.setAttribute("ticketList", ticketList);
             request.getRequestDispatcher("/waitinglist.jsp").forward(request, response);
     }
